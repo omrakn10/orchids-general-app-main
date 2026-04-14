@@ -31,16 +31,16 @@ export default function AuthScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f4f7] flex flex-col items-center justify-center px-4">
+    <div className="auth-page">
       {/* Background gradient blob */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="hidden">
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-br from-indigo-400/20 to-violet-400/20 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-sm">
+      <div className="auth-card">
         {/* Logo / Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-200 mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-lg bg-[#0f766e] shadow-lg shadow-teal-100 mb-4">
             <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
@@ -52,7 +52,7 @@ export default function AuthScreen() {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100/60 p-7 border border-white">
+        <div className="auth-form-card">
 
           {/* Mode toggle */}
           <div className="flex bg-slate-100 rounded-xl p-1 mb-6">
@@ -80,7 +80,7 @@ export default function AuthScreen() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1.5">E-posta</label>
               <input
@@ -127,7 +127,7 @@ export default function AuthScreen() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold rounded-xl shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm mt-1"
+              className="primary-button w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm mt-1"
             >
               {loading
                 ? (mode === 'login' ? 'Giriş yapılıyor…' : 'Hesap oluşturuluyor…')
