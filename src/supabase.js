@@ -11,17 +11,7 @@ export const supabase = hasSupabaseConfig
   ? createClient(supabaseConfig.url, supabaseConfig.anonKey)
   : null
 
-const CATEGORY_TO_DB = {
-  work: 'İş',
-  personal: 'Kişisel',
-  daily: 'Günlük',
-}
-
-const CATEGORY_FROM_DB = {
-  İş: 'work',
-  Kişisel: 'personal',
-  Günlük: 'daily',
-}
+const DEFAULT_CATEGORY_NAMES = ['İş', 'Kişisel', 'Günlük']
 
 const PRIORITY_TO_DB = {
   high: 'Yüksek',
@@ -35,12 +25,17 @@ const PRIORITY_FROM_DB = {
   Düşük: 'low',
 }
 
+function missingConfigError() {
+  return new Error('Supabase ayarlari eksik. .env dosyasina VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY eklenmeli.')
+}
+
 function normalizeTodo(todo) {
   if (!todo) return todo
   return {
     ...todo,
-    category: CATEGORY_FROM_DB[todo.category] || todo.category,
     priority: PRIORITY_FROM_DB[todo.priority] || todo.priority,
+    category_id: todo.category_id || null,
+    category_name: todo.category_ref?.name || todo.category_name || todo.category || 'Kategorisiz',
   }
 }
 
@@ -51,13 +46,13 @@ function normalizeTodoList(todos) {
 function mapTodoFieldsToDb(fields) {
   return {
     ...fields,
-    ...(fields.category ? { category: CATEGORY_TO_DB[fields.category] || fields.category } : {}),
     ...(fields.priority ? { priority: PRIORITY_TO_DB[fields.priority] || fields.priority } : {}),
   }
 }
 
-function missingConfigError() {
-  return new Error('Supabase ayarları eksik. .env dosyasına VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY eklenmeli.')
+async function getCurrentUser() {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  return { user, error }
 }
 
 export async function signUp(email, password) {
@@ -78,26 +73,138 @@ export async function signOut() {
   return { error }
 }
 
+export async function ensureDefaultTodoCategories() {
+  if (!supabase) return { data: [], error: missingConfigError() }
+  const { user, error: userError } = await getCurrentUser()
+  if (userError || !user) return { data: [], error: userError }
+
+  const rows = DEFAULT_CATEGORY_NAMES.map((name, index) => ({
+    user_id: user.id,
+    name,
+    is_default: true,
+    sort_order: index,
+  }))
+
+  const { error } = await supabase
+    .from('todo_categories')
+    .upsert(rows, { onConflict: 'user_id,name' })
+
+  if (error) return { data: [], error }
+  return fetchTodoCategories()
+}
+
+export async function fetchTodoCategories() {
+  if (!supabase) return { data: [], error: missingConfigError() }
+  const { user, error: userError } = await getCurrentUser()
+  if (userError || !user) return { data: [], error: userError }
+
+  const { data, error } = await supabase
+    .from('todo_categories')
+    .select('id,name,is_default,sort_order,created_at')
+    .eq('user_id', user.id)
+    .order('is_default', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true })
+
+  return { data: data || [], error }
+}
+
+export async function addTodoCategory(name) {
+  if (!supabase) return { data: null, error: missingConfigError() }
+  const safeName = name?.trim()
+  if (!safeName) return { data: null, error: new Error('Kategori adi bos olamaz.') }
+
+  const { user, error: userError } = await getCurrentUser()
+  if (userError || !user) return { data: null, error: userError }
+
+  const { data, error } = await supabase
+    .from('todo_categories')
+    .insert({
+      user_id: user.id,
+      name: safeName,
+      is_default: false,
+      sort_order: 1000,
+    })
+    .select('id,name,is_default,sort_order,created_at')
+    .single()
+
+  return { data, error }
+}
+
+export async function deleteTodoCategoryAndReassign(categoryId, fallbackCategoryId) {
+  if (!supabase) return { error: missingConfigError() }
+  const { user, error: userError } = await getCurrentUser()
+  if (userError || !user) return { error: userError }
+  if (!fallbackCategoryId) return { error: new Error('Silme icin bir hedef kategori gerekli.') }
+
+  const { error: updateError } = await supabase
+    .from('todos')
+    .update({ category_id: fallbackCategoryId })
+    .eq('user_id', user.id)
+    .eq('category_id', categoryId)
+
+  if (updateError) return { error: updateError }
+
+  const { error: deleteError } = await supabase
+    .from('todo_categories')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('id', categoryId)
+    .eq('is_default', false)
+
+  return { error: deleteError }
+}
+
 export async function fetchTodos() {
   if (!supabase) return { data: [], error: missingConfigError() }
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { data: [], error: null }
+  const { user, error: userError } = await getCurrentUser()
+  if (userError || !user) return { data: [], error: userError || null }
+
   const { data, error } = await supabase
     .from('todos')
-    .select('*')
+    .select(`
+      id,
+      user_id,
+      text,
+      completed,
+      priority,
+      category_id,
+      category,
+      created_at,
+      category_ref:todo_categories!todos_category_id_fkey(id,name)
+    `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
+
   return { data: normalizeTodoList(data), error }
 }
 
-export async function addTodo(text, category, priority) {
+export async function addTodo(text, categoryId, priority) {
   if (!supabase) return { data: null, error: missingConfigError() }
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) throw new Error('Kullanıcı oturumu bulunamadı.')
+  const { user, error: userError } = await getCurrentUser()
+  if (userError || !user) return { data: null, error: userError || new Error('Kullanici oturumu bulunamadi.') }
+
   const { data, error } = await supabase
     .from('todos')
-    .insert([{ user_id: user.id, text, ...mapTodoFieldsToDb({ category, priority }), completed: false }])
-    .select()
+    .insert([{
+      user_id: user.id,
+      text,
+      category_id: categoryId || null,
+      ...mapTodoFieldsToDb({ priority }),
+      completed: false,
+    }])
+    .select(`
+      id,
+      user_id,
+      text,
+      completed,
+      priority,
+      category_id,
+      category,
+      created_at,
+      category_ref:todo_categories!todos_category_id_fkey(id,name)
+    `)
+
   return { data: normalizeTodoList(data), error }
 }
 
@@ -107,7 +214,18 @@ export async function updateTodo(id, fields) {
     .from('todos')
     .update(mapTodoFieldsToDb(fields))
     .eq('id', id)
-    .select()
+    .select(`
+      id,
+      user_id,
+      text,
+      completed,
+      priority,
+      category_id,
+      category,
+      created_at,
+      category_ref:todo_categories!todos_category_id_fkey(id,name)
+    `)
+
   return { data: normalizeTodoList(data), error }
 }
 
@@ -119,7 +237,7 @@ export async function deleteTodo(id) {
 
 export async function fetchOfficeEntries(year, monthIndex) {
   if (!supabase) return { data: [], error: missingConfigError() }
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  const { user, error: userError } = await getCurrentUser()
   if (userError || !user) return { data: [], error: userError }
 
   const startDate = `${year}-${String(monthIndex + 1).padStart(2, '0')}-01`
@@ -139,8 +257,8 @@ export async function fetchOfficeEntries(year, monthIndex) {
 
 export async function upsertOfficeEntry(entryDate, wentToOffice, parkingFee, transportFee = 0) {
   if (!supabase) return { data: null, error: missingConfigError() }
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return { data: null, error: userError || new Error('Kullanıcı oturumu bulunamadı.') }
+  const { user, error: userError } = await getCurrentUser()
+  if (userError || !user) return { data: null, error: userError || new Error('Kullanici oturumu bulunamadi.') }
 
   const { data, error } = await supabase
     .from('office_entries')
