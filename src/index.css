@@ -318,8 +318,10 @@ button {
   border-radius: 8px !important;
 }
 
-.task-list > .task-card-spacious + .task-card-spacious {
-  margin-top: 16px;
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .category-chip {

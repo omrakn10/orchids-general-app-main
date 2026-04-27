@@ -178,17 +178,31 @@ export default function App() {
   async function handleSaveEdit() {
     const text = editText.trim()
     if (!text) return
-    const selectedCategoryName = todoCategories.find(category => category.id === editCategoryId)?.name || null
-    const { data } = await updateTodo(editId, {
+    const selectedCategory = todoCategories.find(category => category.id === editCategoryId) || null
+    const selectedCategoryName = selectedCategory?.name || null
+    const { data, error } = await updateTodo(editId, {
       text,
       category_id: editCategoryId || null,
       category: selectedCategoryName,
       priority: editPriority,
     })
-    if (data) {
-      setTasks(prev => prev.map(task => (task.id === editId ? data[0] : task)))
-      cancelEdit()
-    }
+    if (error) return
+
+    const serverTask = data?.[0] || {}
+    setTasks(prev => prev.map(task => (
+      task.id === editId
+        ? {
+            ...task,
+            ...serverTask,
+            text,
+            priority: editPriority,
+            category_id: editCategoryId || task.category_id || null,
+            category_name: selectedCategory?.name || serverTask.category_name || task.category_name,
+            category_color: selectedCategory?.color || serverTask.category_color || task.category_color,
+          }
+        : task
+    )))
+    cancelEdit()
   }
 
   async function handleAddCategory() {
