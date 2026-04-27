@@ -70,6 +70,8 @@ export default function App() {
   const [newPriority, setNewPriority] = useState('medium')
   const [editId, setEditId] = useState(null)
   const [editText, setEditText] = useState('')
+  const [editCategoryId, setEditCategoryId] = useState('')
+  const [editPriority, setEditPriority] = useState('medium')
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [categoryInput, setCategoryInput] = useState('')
   const [categoryColor, setCategoryColor] = useState(CATEGORY_PALETTE[0])
@@ -158,13 +160,31 @@ export default function App() {
     if (!error) setTasks(prev => prev.filter(task => task.id !== id))
   }
 
+  function startEdit(task) {
+    setEditId(task.id)
+    setEditText(task.text)
+    setEditCategoryId(task.category_id || todoCategories[0]?.id || '')
+    setEditPriority(task.priority || 'medium')
+  }
+
+  function cancelEdit() {
+    setEditId(null)
+    setEditText('')
+    setEditCategoryId('')
+    setEditPriority('medium')
+  }
+
   async function handleSaveEdit() {
     const text = editText.trim()
     if (!text) return
-    const { data } = await updateTodo(editId, { text })
+    const { data } = await updateTodo(editId, {
+      text,
+      category_id: editCategoryId || null,
+      priority: editPriority,
+    })
     if (data) {
       setTasks(prev => prev.map(task => (task.id === editId ? data[0] : task)))
-      setEditId(null)
+      cancelEdit()
     }
   }
 
@@ -340,7 +360,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="task-list space-y-4">
+        <div className="task-list space-y-5">
           {loadingTasks && (
             <div className="text-center py-20">
               <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4" />
@@ -366,16 +386,41 @@ export default function App() {
             return (
               <div key={task.id} className={`task-card task-card-spacious group transition-all duration-200 ${task.completed ? 'border-slate-100 opacity-55' : 'border-slate-100 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-50'}`}>
                 {editId === task.id ? (
-                  <div className="p-5 flex gap-2 items-center">
+                  <div className="p-5 space-y-3">
                     <input
                       autoFocus
                       value={editText}
                       onChange={event => setEditText(event.target.value)}
-                      onKeyDown={event => { if (event.key === 'Enter') handleSaveEdit(); if (event.key === 'Escape') setEditId(null) }}
-                      className="flex-1 text-base px-4 py-2.5 rounded-xl border border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                      onKeyDown={event => {
+                        if (event.key === 'Enter') handleSaveEdit()
+                        if (event.key === 'Escape') cancelEdit()
+                      }}
+                      className="w-full text-base px-4 py-2.5 rounded-xl border border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-300"
                     />
-                    <button onClick={handleSaveEdit} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 cursor-pointer">Kaydet</button>
-                    <button onClick={() => setEditId(null)} className="px-4 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-sm hover:bg-slate-200 cursor-pointer">İptal</button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <select
+                        value={editCategoryId}
+                        onChange={event => setEditCategoryId(event.target.value)}
+                        className="form-control text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 cursor-pointer"
+                      >
+                        {todoCategories.map(category => (
+                          <option key={category.id} value={category.id}>{category.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={editPriority}
+                        onChange={event => setEditPriority(event.target.value)}
+                        className="form-control text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 cursor-pointer"
+                      >
+                        <option value="high">Yüksek</option>
+                        <option value="medium">Orta</option>
+                        <option value="low">Düşük</option>
+                      </select>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <button onClick={handleSaveEdit} disabled={!editText.trim()} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 cursor-pointer">Kaydet</button>
+                      <button onClick={cancelEdit} className="px-4 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-sm hover:bg-slate-200 cursor-pointer">İptal</button>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-5 flex items-start gap-4">
@@ -402,7 +447,7 @@ export default function App() {
                     </div>
 
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                      <button onClick={() => { setEditId(task.id); setEditText(task.text) }} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-colors cursor-pointer" title="Düzenle">
+                      <button onClick={() => startEdit(task)} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-colors cursor-pointer" title="Düzenle">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
