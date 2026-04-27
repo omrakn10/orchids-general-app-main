@@ -1,16 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-export const supabaseConfig = {
-  url: import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL,
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-}
-
-export const hasSupabaseConfig = Boolean(supabaseConfig.url && supabaseConfig.anonKey)
-
-export const supabase = hasSupabaseConfig
-  ? createClient(supabaseConfig.url, supabaseConfig.anonKey)
-  : null
-
+const DEFAULT_CATEGORY_COLORS = ['#0f766e', '#7c3aed', '#2563eb']
 const DEFAULT_CATEGORY_NAMES = ['İş', 'Kişisel', 'Günlük']
 
 const PRIORITY_TO_DB = {
@@ -27,36 +17,58 @@ const PRIORITY_FROM_DB = {
   'DÃ¼ÅŸÃ¼k': 'low',
 }
 
-function missingConfigError() {
-  return new Error('Supabase ayarları eksik. .env dosyasına VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY eklenmeli.')
+export const supabaseConfig = {
+  url: import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL,
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 }
+
+export const hasSupabaseConfig = Boolean(supabaseConfig.url && supabaseConfig.anonKey)
+
+export const supabase = hasSupabaseConfig
+  ? createClient(supabaseConfig.url, supabaseConfig.anonKey)
+  : null
 
 function normalizeLegacyText(value) {
   if (typeof value !== 'string') return value
   const replacements = {
-    'Ä°ÅŸ': 'İş',
-    'KiÅŸisel': 'Kişisel',
-    'GÃ¼nlÃ¼k': 'Günlük',
-    'YÃ¼ksek': 'Yüksek',
-    'DÃ¼ÅŸÃ¼k': 'Düşük',
-    'KullanÄ±cÄ±': 'Kullanıcı',
-    'bulunamadÄ±': 'bulunamadı',
-    'adÄ±': 'adı',
-    'boÅŸ': 'boş',
-    'iÃ§in': 'için',
-    'ayarlarÄ±': 'ayarları',
-    'dosyasÄ±na': 'dosyasına',
+    'Ä°': 'İ',
+    'Ä±': 'ı',
+    'ÅŸ': 'ş',
+    'Åž': 'Ş',
+    'Ã¼': 'ü',
+    'Ãœ': 'Ü',
+    'Ã¶': 'ö',
+    'Ã–': 'Ö',
+    'Ã§': 'ç',
+    'Ã‡': 'Ç',
+    'ÄŸ': 'ğ',
+    'Äž': 'Ğ',
   }
-  return Object.entries(replacements).reduce((next, [bad, good]) => next.replaceAll(bad, good), value)
+  return Object.entries(replacements).reduce(
+    (next, [broken, fixed]) => next.replaceAll(broken, fixed),
+    value,
+  )
+}
+
+function normalizeHexColor(value, fallback = '#0f766e') {
+  if (typeof value !== 'string') return fallback
+  const raw = value.trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase()
+  return fallback
+}
+
+function missingConfigError() {
+  return new Error('Supabase ayarları eksik. `.env` dosyasına VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY eklenmeli.')
 }
 
 function normalizeTodo(todo) {
   if (!todo) return todo
   return {
     ...todo,
-    priority: PRIORITY_FROM_DB[todo.priority] || normalizeLegacyText(todo.priority),
+    priority: PRIORITY_FROM_DB[todo.priority] || todo.priority,
     category_id: todo.category_id || null,
     category_name: normalizeLegacyText(todo.category_ref?.name || todo.category_name || todo.category || 'Kategorisiz'),
+    category_color: normalizeHexColor(todo.category_ref?.color || todo.category_color || '#0f766e'),
   }
 }
 
@@ -68,6 +80,14 @@ function mapTodoFieldsToDb(fields) {
   return {
     ...fields,
     ...(fields.priority ? { priority: PRIORITY_TO_DB[fields.priority] || fields.priority } : {}),
+  }
+}
+
+function normalizeCategory(category, index = 0) {
+  return {
+    ...category,
+    name: normalizeLegacyText(category.name),
+    color: normalizeHexColor(category.color, DEFAULT_CATEGORY_COLORS[index % DEFAULT_CATEGORY_COLORS.length]),
   }
 }
 
@@ -102,6 +122,7 @@ export async function ensureDefaultTodoCategories() {
   const rows = DEFAULT_CATEGORY_NAMES.map((name, index) => ({
     user_id: user.id,
     name,
+    color: DEFAULT_CATEGORY_COLORS[index],
     is_default: true,
     sort_order: index,
   }))
@@ -121,22 +142,22 @@ export async function fetchTodoCategories() {
 
   const { data, error } = await supabase
     .from('todo_categories')
-    .select('id,name,is_default,sort_order,created_at')
+    .select('id,name,color,is_default,sort_order,created_at')
     .eq('user_id', user.id)
     .order('is_default', { ascending: false })
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true })
 
   return {
-    data: (data || []).map(category => ({ ...category, name: normalizeLegacyText(category.name) })),
+    data: (data || []).map(normalizeCategory),
     error,
   }
 }
 
-export async function addTodoCategory(name) {
+export async function addTodoCategory(name, color) {
   if (!supabase) return { data: null, error: missingConfigError() }
   const safeName = normalizeLegacyText(name?.trim())
-  if (!safeName) return { data: null, error: new Error(normalizeLegacyText('Kategori adı boş olamaz.')) }
+  if (!safeName) return { data: null, error: new Error('Kategori adı boş olamaz.') }
 
   const { user, error: userError } = await getCurrentUser()
   if (userError || !user) return { data: null, error: userError }
@@ -146,20 +167,21 @@ export async function addTodoCategory(name) {
     .insert({
       user_id: user.id,
       name: safeName,
+      color: normalizeHexColor(color),
       is_default: false,
       sort_order: 1000,
     })
-    .select('id,name,is_default,sort_order,created_at')
+    .select('id,name,color,is_default,sort_order,created_at')
     .single()
 
-  return { data, error }
+  return { data: data ? normalizeCategory(data) : null, error }
 }
 
 export async function deleteTodoCategoryAndReassign(categoryId, fallbackCategoryId) {
   if (!supabase) return { error: missingConfigError() }
   const { user, error: userError } = await getCurrentUser()
   if (userError || !user) return { error: userError }
-  if (!fallbackCategoryId) return { error: new Error(normalizeLegacyText('Silme için bir hedef kategori gerekli.')) }
+  if (!fallbackCategoryId) return { error: new Error('Silme için bir hedef kategori gerekli.') }
 
   const { error: updateError } = await supabase
     .from('todos')
@@ -195,7 +217,7 @@ export async function fetchTodos() {
       category_id,
       category,
       created_at,
-      category_ref:todo_categories!todos_category_id_fkey(id,name)
+      category_ref:todo_categories!todos_category_id_fkey(id,name,color)
     `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
@@ -206,7 +228,7 @@ export async function fetchTodos() {
 export async function addTodo(text, categoryId, priority) {
   if (!supabase) return { data: null, error: missingConfigError() }
   const { user, error: userError } = await getCurrentUser()
-  if (userError || !user) return { data: null, error: userError || new Error(normalizeLegacyText('Kullanıcı oturumu bulunamadı.')) }
+  if (userError || !user) return { data: null, error: userError || new Error('Kullanıcı oturumu bulunamadı.') }
 
   const { data, error } = await supabase
     .from('todos')
@@ -226,7 +248,7 @@ export async function addTodo(text, categoryId, priority) {
       category_id,
       category,
       created_at,
-      category_ref:todo_categories!todos_category_id_fkey(id,name)
+      category_ref:todo_categories!todos_category_id_fkey(id,name,color)
     `)
 
   return { data: normalizeTodoList(data), error }
@@ -247,7 +269,7 @@ export async function updateTodo(id, fields) {
       category_id,
       category,
       created_at,
-      category_ref:todo_categories!todos_category_id_fkey(id,name)
+      category_ref:todo_categories!todos_category_id_fkey(id,name,color)
     `)
 
   return { data: normalizeTodoList(data), error }
@@ -282,7 +304,7 @@ export async function fetchOfficeEntries(year, monthIndex) {
 export async function upsertOfficeEntry(entryDate, wentToOffice, parkingFee, transportFee = 0) {
   if (!supabase) return { data: null, error: missingConfigError() }
   const { user, error: userError } = await getCurrentUser()
-  if (userError || !user) return { data: null, error: userError || new Error(normalizeLegacyText('Kullanıcı oturumu bulunamadı.')) }
+  if (userError || !user) return { data: null, error: userError || new Error('Kullanıcı oturumu bulunamadı.') }
 
   const { data, error } = await supabase
     .from('office_entries')

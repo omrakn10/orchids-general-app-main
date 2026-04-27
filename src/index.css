@@ -314,6 +314,35 @@ button {
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.07) !important;
 }
 
+.task-card-spacious {
+  border-radius: 8px !important;
+}
+
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.category-color-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 2px solid rgba(148, 163, 184, 0.4);
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.category-color-dot.is-active {
+  border-color: #0f172a;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(15, 23, 42, 0.18);
+  transform: translateY(-1px);
+}
+
 .panel-card {
   padding: 22px !important;
 }

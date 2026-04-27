@@ -22,6 +22,41 @@ const PRIORITY = {
   low: { label: 'Düşük', dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-600 ring-emerald-200' },
 }
 
+const CATEGORY_PALETTE = [
+  '#0f766e',
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#ea580c',
+  '#059669',
+  '#334155',
+  '#0891b2',
+]
+
+function normalizeHexColor(value, fallback = '#0f766e') {
+  if (typeof value !== 'string') return fallback
+  const raw = value.trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase()
+  return fallback
+}
+
+function hexToRgba(hex, alpha) {
+  const safe = normalizeHexColor(hex)
+  const r = parseInt(safe.slice(1, 3), 16)
+  const g = parseInt(safe.slice(3, 5), 16)
+  const b = parseInt(safe.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function categoryBadgeStyle(color) {
+  const base = normalizeHexColor(color)
+  return {
+    color: base,
+    borderColor: hexToRgba(base, 0.3),
+    backgroundColor: hexToRgba(base, 0.12),
+  }
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [activeApp, setActiveApp] = useState('home')
@@ -37,6 +72,7 @@ export default function App() {
   const [editText, setEditText] = useState('')
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [categoryInput, setCategoryInput] = useState('')
+  const [categoryColor, setCategoryColor] = useState(CATEGORY_PALETTE[0])
   const [categoryBusy, setCategoryBusy] = useState(false)
   const [categoryError, setCategoryError] = useState('')
 
@@ -90,10 +126,15 @@ export default function App() {
       categories = ensured || []
     }
 
-    setTodoCategories(categories)
+    const normalizedCategories = categories.map((category, index) => ({
+      ...category,
+      color: normalizeHexColor(category.color, CATEGORY_PALETTE[index % CATEGORY_PALETTE.length]),
+    }))
+
+    setTodoCategories(normalizedCategories)
     setTasks(todoData || [])
-    setNewCategory(prev => (prev && categories.some(cat => cat.id === prev) ? prev : (categories[0]?.id || '')))
-    setActiveCategory(prev => (prev === 'all' || categories.some(cat => cat.id === prev) ? prev : 'all'))
+    setNewCategory(prev => (prev && normalizedCategories.some(cat => cat.id === prev) ? prev : (normalizedCategories[0]?.id || '')))
+    setActiveCategory(prev => (prev === 'all' || normalizedCategories.some(cat => cat.id === prev) ? prev : 'all'))
     setLoadingTasks(false)
   }
 
@@ -109,7 +150,7 @@ export default function App() {
 
   async function handleToggle(id, current) {
     const { data } = await updateTodo(id, { completed: !current })
-    if (data) setTasks(prev => prev.map(task => task.id === id ? data[0] : task))
+    if (data) setTasks(prev => prev.map(task => (task.id === id ? data[0] : task)))
   }
 
   async function handleDelete(id) {
@@ -122,7 +163,7 @@ export default function App() {
     if (!text) return
     const { data } = await updateTodo(editId, { text })
     if (data) {
-      setTasks(prev => prev.map(task => task.id === editId ? data[0] : task))
+      setTasks(prev => prev.map(task => (task.id === editId ? data[0] : task)))
       setEditId(null)
     }
   }
@@ -133,16 +174,18 @@ export default function App() {
     setCategoryBusy(true)
     setCategoryError('')
 
-    const { data, error } = await addTodoCategory(name)
+    const { data, error } = await addTodoCategory(name, categoryColor)
     if (error) {
       setCategoryError(error.message || 'Kategori eklenemedi.')
       setCategoryBusy(false)
       return
     }
 
-    setTodoCategories(prev => [...prev, data])
-    setNewCategory(data.id)
+    const withColor = { ...data, color: normalizeHexColor(data?.color, categoryColor) }
+    setTodoCategories(prev => [...prev, withColor])
+    setNewCategory(withColor.id)
     setCategoryInput('')
+    setCategoryColor(CATEGORY_PALETTE[0])
     setCategoryBusy(false)
   }
 
@@ -167,7 +210,12 @@ export default function App() {
 
     setTasks(prev => prev.map(task => (
       task.category_id === categoryId
-        ? { ...task, category_id: fallback.id, category_name: fallback.name }
+        ? {
+            ...task,
+            category_id: fallback.id,
+            category_name: fallback.name,
+            category_color: fallback.color,
+          }
         : task
     )))
     setTodoCategories(prev => prev.filter(category => category.id !== categoryId))
@@ -243,17 +291,9 @@ export default function App() {
               ? <><span className="text-white font-semibold">{pendingCount}</span> görev seni bekliyor</>
               : 'Tüm görevler tamamlandı'}
         </p>
-        {!loadingTasks && completedCount > 0 && tasks.length > 0 && (
-          <div className="mt-5 mx-auto w-52">
-            <div className="h-1.5 bg-indigo-400/40 rounded-full overflow-hidden">
-              <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${(completedCount / tasks.length) * 100}%` }} />
-            </div>
-            <p className="text-xs text-indigo-200 mt-1.5">{completedCount}/{tasks.length} tamamlandı</p>
-          </div>
-        )}
       </div>
 
-      <div className="todo-content -mt-10 pb-16 flex flex-col gap-5">
+      <div className="todo-content -mt-10 pb-16 flex flex-col gap-6">
         <div className="panel-card">
           <textarea
             value={newTask}
@@ -263,7 +303,7 @@ export default function App() {
             rows={3}
             className="w-full text-slate-800 placeholder-slate-300 text-base resize-none focus:outline-none leading-relaxed"
           />
-          <div className="toolbar-row border-t border-slate-100 mt-3 pt-3 flex items-center flex-wrap">
+          <div className="toolbar-row border-t border-slate-100 mt-4 pt-4 flex items-center flex-wrap">
             <select value={newCategory} onChange={event => setNewCategory(event.target.value)} className="form-control text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 cursor-pointer">
               {todoCategories.map(category => (
                 <option key={category.id} value={category.id}>{category.name}</option>
@@ -300,7 +340,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="task-list space-y-4">
           {loadingTasks && (
             <div className="text-center py-20">
               <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4" />
@@ -317,14 +357,16 @@ export default function App() {
           )}
 
           {!loadingTasks && filtered.map(task => {
-            const categoryLabel = categoryMap[task.category_id]?.name || task.category_name || 'Kategorisiz'
+            const mappedCategory = categoryMap[task.category_id]
+            const categoryLabel = mappedCategory?.name || task.category_name || 'Kategorisiz'
+            const categoryColor = mappedCategory?.color || task.category_color || '#0f766e'
             const priority = PRIORITY[task.priority] || PRIORITY.medium
             const dateLabel = task.created_at ? new Date(task.created_at).toLocaleDateString('tr-TR') : ''
 
             return (
-              <div key={task.id} className={`task-card group transition-all duration-200 ${task.completed ? 'border-slate-100 opacity-50' : 'border-slate-100 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-50'}`}>
+              <div key={task.id} className={`task-card task-card-spacious group transition-all duration-200 ${task.completed ? 'border-slate-100 opacity-55' : 'border-slate-100 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-50'}`}>
                 {editId === task.id ? (
-                  <div className="p-4 flex gap-2 items-center">
+                  <div className="p-5 flex gap-2 items-center">
                     <input
                       autoFocus
                       value={editText}
@@ -336,7 +378,7 @@ export default function App() {
                     <button onClick={() => setEditId(null)} className="px-4 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-sm hover:bg-slate-200 cursor-pointer">İptal</button>
                   </div>
                 ) : (
-                  <div className="p-4 flex items-start gap-4">
+                  <div className="p-5 flex items-start gap-4">
                     <button onClick={() => handleToggle(task.id, task.completed)} className={`mt-0.5 w-6 h-6 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'}`}>
                       {task.completed && (
                         <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -346,18 +388,16 @@ export default function App() {
                     </button>
 
                     <div className="flex-1 min-w-0">
-                      <p className={`text-base leading-relaxed font-medium ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                      <p className={`text-base leading-relaxed font-semibold ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
                         {task.text}
                       </p>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <span className="text-xs text-slate-400">{categoryLabel}</span>
-                        <span className="text-slate-200">|</span>
+                      <div className="flex items-center gap-2.5 mt-3 flex-wrap">
+                        <span className="category-chip" style={categoryBadgeStyle(categoryColor)}>{categoryLabel}</span>
                         <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ring-1 ${priority.badge}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${priority.dot}`} />
                           {priority.label}
                         </span>
-                        <span className="text-slate-200">|</span>
-                        <span className="text-xs text-slate-400">{dateLabel}</span>
+                        <span className="text-xs text-slate-500">{dateLabel}</span>
                       </div>
                     </div>
 
@@ -380,7 +420,9 @@ export default function App() {
           })}
         </div>
 
-        {!loadingTasks && completedCount > 0 && <p className="text-center text-sm text-slate-400">{completedCount} tamamlanmış görev</p>}
+        {!loadingTasks && completedCount > 0 && (
+          <p className="text-center text-sm text-slate-400">{completedCount} tamamlanmış görev</p>
+        )}
       </div>
 
       {showCategoryModal && (
@@ -392,14 +434,33 @@ export default function App() {
             </div>
             <p className="text-sm text-slate-500 mt-2">Yeni kategori ekleyebilir, eklediğin kategorileri silebilirsin.</p>
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 space-y-3">
               <input
                 value={categoryInput}
                 onChange={event => setCategoryInput(event.target.value)}
                 placeholder="Yeni kategori adı"
-                className="form-control flex-1 px-3"
+                className="form-control w-full px-3"
               />
-              <button onClick={handleAddCategory} disabled={categoryBusy || !categoryInput.trim()} className="primary-button cursor-pointer disabled:opacity-50">Ekle</button>
+
+              <div>
+                <p className="text-xs font-bold uppercase text-slate-500 mb-2">Renk seç</p>
+                <div className="flex items-center flex-wrap gap-2">
+                  {CATEGORY_PALETTE.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setCategoryColor(color)}
+                      className={`category-color-dot cursor-pointer ${categoryColor === color ? 'is-active' : ''}`}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <button onClick={handleAddCategory} disabled={categoryBusy || !categoryInput.trim()} className="primary-button cursor-pointer disabled:opacity-50 w-fit">
+                Kategori ekle
+              </button>
             </div>
 
             {categoryError && <p className="mt-3 text-sm font-semibold text-rose-600">{categoryError}</p>}
@@ -407,7 +468,10 @@ export default function App() {
             <div className="mt-5 space-y-2 max-h-64 overflow-auto">
               {todoCategories.map(category => (
                 <div key={category.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  <span className="font-semibold text-slate-700">{category.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                    <span className="font-semibold text-slate-700">{category.name}</span>
+                  </div>
                   {category.is_default ? (
                     <span className="text-xs font-bold text-slate-400">Varsayılan</span>
                   ) : (
