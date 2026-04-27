@@ -57,6 +57,11 @@ function categoryBadgeStyle(color) {
   }
 }
 
+function isSameId(left, right) {
+  if (left === null || left === undefined || right === null || right === undefined) return false
+  return String(left) === String(right)
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [activeApp, setActiveApp] = useState('home')
@@ -135,8 +140,8 @@ export default function App() {
 
     setTodoCategories(normalizedCategories)
     setTasks(todoData || [])
-    setNewCategory(prev => (prev && normalizedCategories.some(cat => cat.id === prev) ? prev : (normalizedCategories[0]?.id || '')))
-    setActiveCategory(prev => (prev === 'all' || normalizedCategories.some(cat => cat.id === prev) ? prev : 'all'))
+    setNewCategory(prev => (prev && normalizedCategories.some(cat => isSameId(cat.id, prev)) ? prev : (normalizedCategories[0]?.id || '')))
+    setActiveCategory(prev => (prev === 'all' || normalizedCategories.some(cat => isSameId(cat.id, prev)) ? prev : 'all'))
     setLoadingTasks(false)
   }
 
@@ -164,7 +169,7 @@ export default function App() {
     const fallbackCategoryId = todoCategories.find(category => category.name === task.category_name)?.id || ''
     setEditId(task.id)
     setEditText(task.text)
-    setEditCategoryId(task.category_id || fallbackCategoryId || todoCategories[0]?.id || '')
+    setEditCategoryId(task.category_id !== null && task.category_id !== undefined ? String(task.category_id) : String(fallbackCategoryId || todoCategories[0]?.id || ''))
     setEditPriority(task.priority || 'medium')
   }
 
@@ -178,7 +183,7 @@ export default function App() {
   async function handleSaveEdit() {
     const text = editText.trim()
     if (!text) return
-    const selectedCategory = todoCategories.find(category => category.id === editCategoryId) || null
+    const selectedCategory = todoCategories.find(category => isSameId(category.id, editCategoryId)) || null
     const selectedCategoryName = selectedCategory?.name || null
     const { data, error } = await updateTodo(editId, {
       text,
@@ -190,13 +195,13 @@ export default function App() {
 
     const serverTask = data?.[0] || {}
     setTasks(prev => prev.map(task => (
-      task.id === editId
+      isSameId(task.id, editId)
         ? {
             ...task,
             ...serverTask,
             text,
             priority: editPriority,
-            category_id: editCategoryId || task.category_id || null,
+            category_id: selectedCategory?.id || editCategoryId || task.category_id || null,
             category_name: selectedCategory?.name || serverTask.category_name || task.category_name,
             category_color: selectedCategory?.color || serverTask.category_color || task.category_color,
           }
@@ -246,7 +251,7 @@ export default function App() {
     }
 
     setTasks(prev => prev.map(task => (
-      task.category_id === categoryId
+      isSameId(task.category_id, categoryId)
         ? {
             ...task,
             category_id: fallback.id,
@@ -256,8 +261,8 @@ export default function App() {
         : task
     )))
     setTodoCategories(prev => prev.filter(category => category.id !== categoryId))
-    setActiveCategory(prev => (prev === categoryId ? 'all' : prev))
-    setNewCategory(prev => (prev === categoryId ? fallback.id : prev))
+    setActiveCategory(prev => (isSameId(prev, categoryId) ? 'all' : prev))
+    setNewCategory(prev => (isSameId(prev, categoryId) ? fallback.id : prev))
     setCategoryBusy(false)
   }
 
@@ -293,13 +298,13 @@ export default function App() {
 
   const filtered = tasks.filter(task => {
     if (!showCompleted && task.completed) return false
-    if (activeCategory !== 'all' && task.category_id !== activeCategory) return false
+    if (activeCategory !== 'all' && !isSameId(task.category_id, activeCategory)) return false
     return true
   })
 
   const pendingCount = tasks.filter(task => !task.completed).length
   const completedCount = tasks.filter(task => task.completed).length
-  const categoryCount = (categoryId) => tasks.filter(task => !task.completed && (categoryId === 'all' || task.category_id === categoryId)).length
+  const categoryCount = (categoryId) => tasks.filter(task => !task.completed && (categoryId === 'all' || isSameId(task.category_id, categoryId))).length
   const today = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
   const categoryMap = Object.fromEntries(todoCategories.map(category => [category.id, category]))
 
@@ -377,7 +382,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="task-list space-y-5">
+        <div className="task-list">
           {loadingTasks && (
             <div className="text-center py-20">
               <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4" />

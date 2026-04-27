@@ -321,7 +321,7 @@ button {
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
 }
 
 .category-chip {
