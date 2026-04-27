@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import './index.css'
 import {
   supabase,
@@ -216,7 +216,7 @@ export default function App() {
   const completedCount = tasks.filter(task => task.completed).length
   const categoryCount = (categoryId) => tasks.filter(task => !task.completed && (categoryId === 'all' || task.category_id === categoryId)).length
   const today = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
-  const categoryMap = useMemo(() => Object.fromEntries(todoCategories.map(category => [category.id, category])), [todoCategories])
+  const categoryMap = Object.fromEntries(todoCategories.map(category => [category.id, category]))
 
   return (
     <div className="app-page flex flex-col items-center">
