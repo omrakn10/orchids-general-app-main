@@ -23,19 +23,40 @@ const PRIORITY_FROM_DB = {
   Yüksek: 'high',
   Orta: 'medium',
   Düşük: 'low',
+  'YÃ¼ksek': 'high',
+  'DÃ¼ÅŸÃ¼k': 'low',
 }
 
 function missingConfigError() {
-  return new Error('Supabase ayarlari eksik. .env dosyasina VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY eklenmeli.')
+  return new Error('Supabase ayarları eksik. .env dosyasına VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY eklenmeli.')
+}
+
+function normalizeLegacyText(value) {
+  if (typeof value !== 'string') return value
+  const replacements = {
+    'Ä°ÅŸ': 'İş',
+    'KiÅŸisel': 'Kişisel',
+    'GÃ¼nlÃ¼k': 'Günlük',
+    'YÃ¼ksek': 'Yüksek',
+    'DÃ¼ÅŸÃ¼k': 'Düşük',
+    'KullanÄ±cÄ±': 'Kullanıcı',
+    'bulunamadÄ±': 'bulunamadı',
+    'adÄ±': 'adı',
+    'boÅŸ': 'boş',
+    'iÃ§in': 'için',
+    'ayarlarÄ±': 'ayarları',
+    'dosyasÄ±na': 'dosyasına',
+  }
+  return Object.entries(replacements).reduce((next, [bad, good]) => next.replaceAll(bad, good), value)
 }
 
 function normalizeTodo(todo) {
   if (!todo) return todo
   return {
     ...todo,
-    priority: PRIORITY_FROM_DB[todo.priority] || todo.priority,
+    priority: PRIORITY_FROM_DB[todo.priority] || normalizeLegacyText(todo.priority),
     category_id: todo.category_id || null,
-    category_name: todo.category_ref?.name || todo.category_name || todo.category || 'Kategorisiz',
+    category_name: normalizeLegacyText(todo.category_ref?.name || todo.category_name || todo.category || 'Kategorisiz'),
   }
 }
 
@@ -106,13 +127,16 @@ export async function fetchTodoCategories() {
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true })
 
-  return { data: data || [], error }
+  return {
+    data: (data || []).map(category => ({ ...category, name: normalizeLegacyText(category.name) })),
+    error,
+  }
 }
 
 export async function addTodoCategory(name) {
   if (!supabase) return { data: null, error: missingConfigError() }
-  const safeName = name?.trim()
-  if (!safeName) return { data: null, error: new Error('Kategori adi bos olamaz.') }
+  const safeName = normalizeLegacyText(name?.trim())
+  if (!safeName) return { data: null, error: new Error(normalizeLegacyText('Kategori adı boş olamaz.')) }
 
   const { user, error: userError } = await getCurrentUser()
   if (userError || !user) return { data: null, error: userError }
@@ -135,7 +159,7 @@ export async function deleteTodoCategoryAndReassign(categoryId, fallbackCategory
   if (!supabase) return { error: missingConfigError() }
   const { user, error: userError } = await getCurrentUser()
   if (userError || !user) return { error: userError }
-  if (!fallbackCategoryId) return { error: new Error('Silme icin bir hedef kategori gerekli.') }
+  if (!fallbackCategoryId) return { error: new Error(normalizeLegacyText('Silme için bir hedef kategori gerekli.')) }
 
   const { error: updateError } = await supabase
     .from('todos')
@@ -182,7 +206,7 @@ export async function fetchTodos() {
 export async function addTodo(text, categoryId, priority) {
   if (!supabase) return { data: null, error: missingConfigError() }
   const { user, error: userError } = await getCurrentUser()
-  if (userError || !user) return { data: null, error: userError || new Error('Kullanici oturumu bulunamadi.') }
+  if (userError || !user) return { data: null, error: userError || new Error(normalizeLegacyText('Kullanıcı oturumu bulunamadı.')) }
 
   const { data, error } = await supabase
     .from('todos')
@@ -258,7 +282,7 @@ export async function fetchOfficeEntries(year, monthIndex) {
 export async function upsertOfficeEntry(entryDate, wentToOffice, parkingFee, transportFee = 0) {
   if (!supabase) return { data: null, error: missingConfigError() }
   const { user, error: userError } = await getCurrentUser()
-  if (userError || !user) return { data: null, error: userError || new Error('Kullanici oturumu bulunamadi.') }
+  if (userError || !user) return { data: null, error: userError || new Error(normalizeLegacyText('Kullanıcı oturumu bulunamadı.')) }
 
   const { data, error } = await supabase
     .from('office_entries')

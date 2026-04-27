@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { signIn, signUp } from './supabase'
 
 export default function AuthScreen() {
-  const [mode, setMode] = useState('login') // 'login' | 'register'
+  const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,13 +32,7 @@ export default function AuthScreen() {
 
   return (
     <div className="auth-page">
-      {/* Background gradient blob */}
-      <div className="hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-br from-indigo-400/20 to-violet-400/20 rounded-full blur-3xl" />
-      </div>
-
       <div className="auth-card">
-        {/* Logo / Title */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-lg bg-[#0f766e] shadow-lg shadow-teal-100 mb-4">
             <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -51,10 +45,7 @@ export default function AuthScreen() {
           </p>
         </div>
 
-        {/* Card */}
         <div className="auth-form-card">
-
-          {/* Mode toggle */}
           <div className="flex bg-slate-100 rounded-xl p-1 mb-6">
             <button
               type="button"
@@ -130,7 +121,7 @@ export default function AuthScreen() {
               className="primary-button w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm mt-1"
             >
               {loading
-                ? (mode === 'login' ? 'Giriş yapılıyor…' : 'Hesap oluşturuluyor…')
+                ? (mode === 'login' ? 'Giriş yapılıyor...' : 'Hesap oluşturuluyor...')
                 : (mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
             </button>
           </form>

@@ -17,9 +17,9 @@ import AuthScreen from './AuthScreen'
 import OfficeExpenseApp from './OfficeExpenseSupabaseApp'
 
 const PRIORITY = {
-  high: { label: 'Yuksek', dot: 'bg-rose-400', badge: 'bg-rose-50 text-rose-600 ring-rose-200' },
+  high: { label: 'Yüksek', dot: 'bg-rose-400', badge: 'bg-rose-50 text-rose-600 ring-rose-200' },
   medium: { label: 'Orta', dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-600 ring-amber-200' },
-  low: { label: 'Dusuk', dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-600 ring-emerald-200' },
+  low: { label: 'Düşük', dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-600 ring-emerald-200' },
 }
 
 export default function App() {
@@ -152,7 +152,7 @@ export default function App() {
 
     const fallback = todoCategories.find(category => category.id !== categoryId)
     if (!fallback) {
-      setCategoryError('Silmek icin en az bir kategori kalmali.')
+      setCategoryError('Silmek için en az bir kategori kalmalı.')
       return
     }
 
@@ -222,33 +222,33 @@ export default function App() {
     <div className="app-page flex flex-col items-center">
       <div className="app-hero">
         <div className="app-topbar">
-          <button onClick={() => navigateToApp('home')} className="nav-button cursor-pointer">Ana menu</button>
+          <button onClick={() => navigateToApp('home')} className="nav-button cursor-pointer">Ana menü</button>
           <div className="topbar-actions">
             <span className="topbar-email hidden sm:block">{session.user.email}</span>
-            <button onClick={handleSignOut} title="Cikis Yap" className="nav-button cursor-pointer">
+            <button onClick={handleSignOut} title="Çıkış Yap" className="nav-button cursor-pointer">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Cikis
+              Çıkış
             </button>
           </div>
         </div>
 
         <p className="app-hero-kicker">{today}</p>
-        <h1 className="app-hero-title">Yapilacaklar</h1>
+        <h1 className="app-hero-title">Yapılacaklar</h1>
         <p className="app-hero-subtitle">
           {loadingTasks
-            ? 'Yukleniyor...'
+            ? 'Yükleniyor...'
             : pendingCount > 0
-              ? <><span className="text-white font-semibold">{pendingCount}</span> gorev seni bekliyor</>
-              : 'Tum gorevler tamamlandi'}
+              ? <><span className="text-white font-semibold">{pendingCount}</span> görev seni bekliyor</>
+              : 'Tüm görevler tamamlandı'}
         </p>
         {!loadingTasks && completedCount > 0 && tasks.length > 0 && (
           <div className="mt-5 mx-auto w-52">
             <div className="h-1.5 bg-indigo-400/40 rounded-full overflow-hidden">
               <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${(completedCount / tasks.length) * 100}%` }} />
             </div>
-            <p className="text-xs text-indigo-200 mt-1.5">{completedCount}/{tasks.length} tamamlandi</p>
+            <p className="text-xs text-indigo-200 mt-1.5">{completedCount}/{tasks.length} tamamlandı</p>
           </div>
         )}
       </div>
@@ -259,7 +259,7 @@ export default function App() {
             value={newTask}
             onChange={event => setNewTask(event.target.value)}
             onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); handleAddTask() } }}
-            placeholder="Yeni gorev ekle... (Enter ile kaydet)"
+            placeholder="Yeni görev ekle... (Enter ile kaydet)"
             rows={3}
             className="w-full text-slate-800 placeholder-slate-300 text-base resize-none focus:outline-none leading-relaxed"
           />
@@ -270,11 +270,11 @@ export default function App() {
               ))}
             </select>
             <select value={newPriority} onChange={event => setNewPriority(event.target.value)} className="form-control text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 cursor-pointer">
-              <option value="high">Yuksek</option>
+              <option value="high">Yüksek</option>
               <option value="medium">Orta</option>
-              <option value="low">Dusuk</option>
+              <option value="low">Düşük</option>
             </select>
-            <button onClick={() => setShowCategoryModal(true)} className="ghost-button cursor-pointer">Kategori yonet</button>
+            <button onClick={() => setShowCategoryModal(true)} className="ghost-button cursor-pointer">Kategori yönet</button>
             <button onClick={handleAddTask} disabled={!newTask.trim() || !newCategory} className="primary-button ml-auto disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -286,7 +286,7 @@ export default function App() {
 
         <div className="flex items-center justify-center gap-2 flex-wrap">
           <button onClick={() => setActiveCategory('all')} className={`filter-pill flex items-center gap-1.5 px-4 py-2 text-sm transition-all cursor-pointer ${activeCategory === 'all' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300' : 'bg-white text-slate-500 border border-slate-200 hover:border-indigo-300 hover:text-indigo-500'}`}>
-            <span>Tumu</span>
+            <span>Tümü</span>
             {categoryCount('all') > 0 && <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${activeCategory === 'all' ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}>{categoryCount('all')}</span>}
           </button>
           {todoCategories.map(category => (
@@ -296,7 +296,7 @@ export default function App() {
             </button>
           ))}
           <button onClick={() => setShowCompleted(prev => !prev)} className={`filter-pill text-sm px-4 py-2 border transition-all cursor-pointer whitespace-nowrap ${showCompleted ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400'}`}>
-            {showCompleted ? 'Tamamlananlari gizle' : 'Tamamlananlari goster'}
+            {showCompleted ? 'Tamamlananları gizle' : 'Tamamlananları göster'}
           </button>
         </div>
 
@@ -304,15 +304,15 @@ export default function App() {
           {loadingTasks && (
             <div className="text-center py-20">
               <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4" />
-              <p className="text-slate-400 text-sm">Gorevler yukleniyor...</p>
+              <p className="text-slate-400 text-sm">Görevler yükleniyor...</p>
             </div>
           )}
 
           {!loadingTasks && filtered.length === 0 && (
             <div className="text-center py-20">
               <div className="text-6xl mb-4">Hedef</div>
-              <p className="font-semibold text-slate-500 text-lg">Bekleyen gorev yok</p>
-              <p className="text-sm text-slate-400 mt-1">Yeni bir gorev ekleyerek basla</p>
+              <p className="font-semibold text-slate-500 text-lg">Bekleyen görev yok</p>
+              <p className="text-sm text-slate-400 mt-1">Yeni bir görev ekleyerek başla</p>
             </div>
           )}
 
@@ -333,7 +333,7 @@ export default function App() {
                       className="flex-1 text-base px-4 py-2.5 rounded-xl border border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-300"
                     />
                     <button onClick={handleSaveEdit} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 cursor-pointer">Kaydet</button>
-                    <button onClick={() => setEditId(null)} className="px-4 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-sm hover:bg-slate-200 cursor-pointer">Iptal</button>
+                    <button onClick={() => setEditId(null)} className="px-4 py-2.5 bg-slate-100 text-slate-500 rounded-xl text-sm hover:bg-slate-200 cursor-pointer">İptal</button>
                   </div>
                 ) : (
                   <div className="p-4 flex items-start gap-4">
@@ -362,7 +362,7 @@ export default function App() {
                     </div>
 
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                      <button onClick={() => { setEditId(task.id); setEditText(task.text) }} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-colors cursor-pointer" title="Duzenle">
+                      <button onClick={() => { setEditId(task.id); setEditText(task.text) }} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-colors cursor-pointer" title="Düzenle">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
@@ -380,23 +380,23 @@ export default function App() {
           })}
         </div>
 
-        {!loadingTasks && completedCount > 0 && <p className="text-center text-sm text-slate-400">{completedCount} tamamlanmis gorev</p>}
+        {!loadingTasks && completedCount > 0 && <p className="text-center text-sm text-slate-400">{completedCount} tamamlanmış görev</p>}
       </div>
 
       {showCategoryModal && (
         <div className="modal-backdrop">
           <div className="modal-card">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-2xl font-bold text-slate-900">Kategori yonetimi</h2>
+              <h2 className="text-2xl font-bold text-slate-900">Kategori yönetimi</h2>
               <button onClick={() => { setShowCategoryModal(false); setCategoryError('') }} className="soft-button cursor-pointer">Kapat</button>
             </div>
-            <p className="text-sm text-slate-500 mt-2">Yeni kategori ekleyebilir, ekledigin kategorileri silebilirsin.</p>
+            <p className="text-sm text-slate-500 mt-2">Yeni kategori ekleyebilir, eklediğin kategorileri silebilirsin.</p>
 
             <div className="mt-4 flex gap-2">
               <input
                 value={categoryInput}
                 onChange={event => setCategoryInput(event.target.value)}
-                placeholder="Yeni kategori adi"
+                placeholder="Yeni kategori adı"
                 className="form-control flex-1 px-3"
               />
               <button onClick={handleAddCategory} disabled={categoryBusy || !categoryInput.trim()} className="primary-button cursor-pointer disabled:opacity-50">Ekle</button>
@@ -409,7 +409,7 @@ export default function App() {
                 <div key={category.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                   <span className="font-semibold text-slate-700">{category.name}</span>
                   {category.is_default ? (
-                    <span className="text-xs font-bold text-slate-400">Varsayilan</span>
+                    <span className="text-xs font-bold text-slate-400">Varsayılan</span>
                   ) : (
                     <button onClick={() => handleDeleteCategory(category.id)} disabled={categoryBusy} className="danger-button cursor-pointer disabled:opacity-50">
                       Sil
@@ -432,34 +432,34 @@ function AppChooser({ session, onSelect, onSignOut }) {
         <span />
         <div className="topbar-actions">
           <span className="topbar-email hidden sm:block">{session.user.email}</span>
-          <button onClick={onSignOut} className="ghost-button cursor-pointer">Cikis</button>
+          <button onClick={onSignOut} className="ghost-button cursor-pointer">Çıkış</button>
         </div>
       </div>
 
       <div className="chooser-container">
         <div className="chooser-heading">
-          <p className="section-kicker">Hos geldin</p>
-          <h1 className="section-title">Bugun neyi takip edelim?</h1>
-          <p className="section-subtitle">Kullanmak istedigin alani sec. Her modul kendi verisini saklar ve kaldigin yerden devam edersin.</p>
+          <p className="section-kicker">Hoş geldin</p>
+          <h1 className="section-title">Bugün neyi takip edelim?</h1>
+          <p className="section-subtitle">Kullanmak istediğin alanı seç. Her modül kendi verisini saklar ve kaldığın yerden devam edersin.</p>
         </div>
 
         <div className="chooser-grid">
           <button onClick={() => onSelect('todos')} className="module-card cursor-pointer">
             <span className="module-index">1</span>
-            <h2 className="mt-5 text-xl font-bold">Yapilacaklar</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Gorevlerini kategori ve onceliklerle takip et.</p>
+            <h2 className="mt-5 text-xl font-bold">Yapılacaklar</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Görevlerini kategori ve önceliklerle takip et.</p>
           </button>
 
           <button onClick={() => onSelect('office')} className="module-card cursor-pointer">
             <span className="module-index">2</span>
-            <h2 className="mt-5 text-xl font-bold">Ofis Gidis ve Masraf</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Ofise gittigin gunleri, otoparki ve aylik ulasim giderini gor.</p>
+            <h2 className="mt-5 text-xl font-bold">Ofis Gidiş ve Masraf</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Ofise gittiğin günleri, otoparkı ve aylık ulaşım giderini gör.</p>
           </button>
 
           <div className="module-card module-card-disabled">
             <span className="module-index">3</span>
             <h2 className="mt-5 text-xl font-bold text-slate-500">Coming soon</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Bu alan simdilik tiklanamaz. Ileride yeni bir modul eklenecek.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Bu alan şimdilik tıklanamaz. İleride yeni bir modül eklenecek.</p>
           </div>
         </div>
       </div>
@@ -471,10 +471,10 @@ function MissingConfigScreen() {
   return (
     <div className="min-h-screen bg-[#f6f7f4] px-4 py-16 text-slate-900">
       <div className="mx-auto max-w-xl rounded-lg border border-rose-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-bold uppercase tracking-wide text-rose-700">Supabase ayari eksik</p>
-        <h1 className="mt-3 text-2xl font-bold">Uygulama baslamak icin `.env` dosyasini bekliyor.</h1>
+        <p className="text-sm font-bold uppercase tracking-wide text-rose-700">Supabase ayarı eksik</p>
+        <h1 className="mt-3 text-2xl font-bold">Uygulama başlamak için `.env` dosyasını bekliyor.</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Proje ana dizinine `.env` dosyasi ekleyip Supabase proje bilgilerini yaz. Vite icin `VITE_` adlari onerilir; mevcut `NEXT_PUBLIC_` adlari da desteklenir. Sonra gelistirme sunucusunu yeniden baslat.
+          Proje ana dizinine `.env` dosyası ekleyip Supabase proje bilgilerini yaz. Vite için `VITE_` adları önerilir; mevcut `NEXT_PUBLIC_` adları da desteklenir. Sonra geliştirme sunucusunu yeniden başlat.
         </p>
         <pre className="mt-5 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-white">
 {`VITE_SUPABASE_URL=https://proje-ref.supabase.co
