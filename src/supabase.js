@@ -74,11 +74,14 @@ function isMissingTableOrRelationError(error) {
   return error.code === '42P01' || error.code === 'PGRST200' || message.includes('does not exist') || message.includes('Could not find')
 }
 
-function normalizeCategory(category, index = 0) {
+function normalizeCategory(category, index = 0, fallbackColor = null) {
   return {
     ...category,
     name: normalizeLegacyText(category.name),
-    color: normalizeHexColor(category.color, DEFAULT_CATEGORY_COLORS[index % DEFAULT_CATEGORY_COLORS.length]),
+    color: normalizeHexColor(
+      category.color,
+      normalizeHexColor(fallbackColor || DEFAULT_CATEGORY_COLORS[index % DEFAULT_CATEGORY_COLORS.length]),
+    ),
   }
 }
 
@@ -87,7 +90,7 @@ function normalizeTodo(todo) {
   return {
     ...todo,
     priority: PRIORITY_FROM_DB[todo.priority] || todo.priority,
-    category_id: todo.category_id || null,
+    category_id: todo.category_id ?? null,
     category_name: normalizeLegacyText(todo.category_ref?.name || todo.category_name || todo.category || 'Kategorisiz'),
     category_color: normalizeHexColor(todo.category_ref?.color || todo.category_color || '#0f766e'),
   }
@@ -107,6 +110,18 @@ function mapTodoFieldsToDb(fields) {
 async function getCurrentUser() {
   const { data: { user }, error } = await supabase.auth.getUser()
   return { user, error }
+}
+
+async function getCategoryNameById(userId, categoryId) {
+  if (!categoryId) return null
+  const { data, error } = await supabase
+    .from('todo_categories')
+    .select('name')
+    .eq('user_id', userId)
+    .eq('id', categoryId)
+    .single()
+  if (error) return null
+  return normalizeLegacyText(data?.name || null)
 }
 
 export async function signUp(email, password) {
@@ -224,7 +239,7 @@ export async function addTodoCategory(name, color) {
   }
 
   return {
-    data: insertResult.data ? normalizeCategory(insertResult.data) : null,
+    data: insertResult.data ? normalizeCategory(insertResult.data, 0, color) : null,
     error: insertResult.error,
   }
 }
@@ -330,12 +345,40 @@ export async function addTodo(text, categoryId, priority) {
     `)
 
   if (insertResult.error) {
+    const missingCategoryId = isMissingColumnError(insertResult.error, 'category_id')
+    const missingPriority = isMissingColumnError(insertResult.error, 'priority')
+    const fallbackInsert = {
+      user_id: user.id,
+      text,
+      completed: false,
+    }
+
+    if (!missingPriority) {
+      fallbackInsert.priority = PRIORITY_TO_DB[priority] || priority
+    }
+
+    if (categoryId) {
+      if (missingCategoryId) {
+        const categoryName = await getCategoryNameById(user.id, categoryId)
+        if (categoryName) fallbackInsert.category = categoryName
+      } else {
+        fallbackInsert.category_id = categoryId
+      }
+    }
+
+    insertResult = await supabase
+      .from('todos')
+      .insert([fallbackInsert])
+      .select('id,user_id,text,completed,priority,category_id,category,created_at')
+  }
+
+  if (insertResult.error && isMissingColumnError(insertResult.error, 'category_id')) {
     insertResult = await supabase
       .from('todos')
       .insert([{
         user_id: user.id,
         text,
-        ...mapTodoFieldsToDb({ priority }),
+        ...(priority ? { priority: PRIORITY_TO_DB[priority] || priority } : {}),
         completed: false,
       }])
       .select('id,user_id,text,completed,priority,category,created_at')
