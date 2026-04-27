@@ -318,6 +318,10 @@ button {
   border-radius: 8px !important;
 }
 
+.task-list > .task-card-spacious + .task-card-spacious {
+  margin-top: 16px;
+}
+
 .category-chip {
   display: inline-flex;
   align-items: center;

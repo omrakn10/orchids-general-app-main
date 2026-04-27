@@ -161,9 +161,10 @@ export default function App() {
   }
 
   function startEdit(task) {
+    const fallbackCategoryId = todoCategories.find(category => category.name === task.category_name)?.id || ''
     setEditId(task.id)
     setEditText(task.text)
-    setEditCategoryId(task.category_id || todoCategories[0]?.id || '')
+    setEditCategoryId(task.category_id || fallbackCategoryId || todoCategories[0]?.id || '')
     setEditPriority(task.priority || 'medium')
   }
 
@@ -177,9 +178,11 @@ export default function App() {
   async function handleSaveEdit() {
     const text = editText.trim()
     if (!text) return
+    const selectedCategoryName = todoCategories.find(category => category.id === editCategoryId)?.name || null
     const { data } = await updateTodo(editId, {
       text,
       category_id: editCategoryId || null,
+      category: selectedCategoryName,
       priority: editPriority,
     })
     if (data) {

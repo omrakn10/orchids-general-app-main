@@ -346,9 +346,11 @@ export async function addTodo(text, categoryId, priority) {
 
 export async function updateTodo(id, fields) {
   if (!supabase) return { data: null, error: missingConfigError() }
+  const mappedFields = mapTodoFieldsToDb(fields)
+
   const { data, error } = await supabase
     .from('todos')
-    .update(mapTodoFieldsToDb(fields))
+    .update(mappedFields)
     .eq('id', id)
     .select(`
       id,
@@ -364,9 +366,13 @@ export async function updateTodo(id, fields) {
 
   if (!error) return { data: normalizeTodoList(data), error: null }
 
+  const safeFields = { ...mappedFields }
+  if (isMissingColumnError(error, 'category_id')) delete safeFields.category_id
+  if (isMissingColumnError(error, 'priority')) delete safeFields.priority
+
   const fallback = await supabase
     .from('todos')
-    .update(mapTodoFieldsToDb(fields))
+    .update(safeFields)
     .eq('id', id)
     .select('id,user_id,text,completed,priority,category,created_at')
 
