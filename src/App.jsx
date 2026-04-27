@@ -73,6 +73,7 @@ export default function App() {
   const [newTask, setNewTask] = useState('')
   const [newCategory, setNewCategory] = useState('')
   const [newPriority, setNewPriority] = useState('medium')
+  const [taskError, setTaskError] = useState('')
   const [editId, setEditId] = useState(null)
   const [editText, setEditText] = useState('')
   const [editCategoryId, setEditCategoryId] = useState('')
@@ -140,7 +141,7 @@ export default function App() {
 
     setTodoCategories(normalizedCategories)
     setTasks(todoData || [])
-    setNewCategory(prev => (prev && normalizedCategories.some(cat => isSameId(cat.id, prev)) ? prev : (normalizedCategories[0]?.id || '')))
+    setNewCategory(prev => (prev && normalizedCategories.some(cat => isSameId(cat.id, prev)) ? String(prev) : String(normalizedCategories[0]?.id || '')))
     setActiveCategory(prev => (prev === 'all' || normalizedCategories.some(cat => isSameId(cat.id, prev)) ? prev : 'all'))
     setLoadingTasks(false)
   }
@@ -148,7 +149,13 @@ export default function App() {
   async function handleAddTask() {
     const text = newTask.trim()
     if (!text || !newCategory) return
-    const { data } = await addTodo(text, newCategory, newPriority)
+    setTaskError('')
+    const selectedCategory = todoCategories.find(category => isSameId(category.id, newCategory))
+    const { data, error } = await addTodo(text, selectedCategory?.id || newCategory, newPriority)
+    if (error) {
+      setTaskError(error.message || 'Görev eklenemedi.')
+      return
+    }
     if (data) {
       setTasks(prev => [data[0], ...prev])
       setNewTask('')
@@ -216,7 +223,7 @@ export default function App() {
     setCategoryBusy(true)
     setCategoryError('')
 
-    const { data, error } = await addTodoCategory(name, categoryColor)
+    const { data, error, warning } = await addTodoCategory(name, categoryColor)
     if (error) {
       setCategoryError(error.message || 'Kategori eklenemedi.')
       setCategoryBusy(false)
@@ -225,7 +232,8 @@ export default function App() {
 
     const withColor = { ...data, color: normalizeHexColor(data?.color, categoryColor) }
     setTodoCategories(prev => [...prev, withColor])
-    setNewCategory(withColor.id)
+    setNewCategory(String(withColor.id))
+    if (warning) setCategoryError(warning)
     setCategoryInput('')
     setCategoryColor(CATEGORY_PALETTE[0])
     setCategoryBusy(false)
@@ -348,7 +356,7 @@ export default function App() {
           <div className="toolbar-row border-t border-slate-100 mt-4 pt-4 flex items-center flex-wrap">
             <select value={newCategory} onChange={event => setNewCategory(event.target.value)} className="form-control text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 cursor-pointer">
               {todoCategories.map(category => (
-                <option key={category.id} value={category.id}>{category.name}</option>
+                <option key={category.id} value={String(category.id)}>{category.name}</option>
               ))}
             </select>
             <select value={newPriority} onChange={event => setNewPriority(event.target.value)} className="form-control text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 cursor-pointer">
@@ -364,6 +372,7 @@ export default function App() {
               Ekle
             </button>
           </div>
+          {taskError && <p className="mt-3 text-sm font-semibold text-rose-600">{taskError}</p>}
         </div>
 
         <div className="flex items-center justify-center gap-2 flex-wrap">

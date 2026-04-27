@@ -74,6 +74,12 @@ function isMissingTableOrRelationError(error) {
   return error.code === '42P01' || error.code === 'PGRST200' || message.includes('does not exist') || message.includes('Could not find')
 }
 
+function isCategoryConstraintError(error) {
+  if (!error) return false
+  const message = String(error.message || '').toLowerCase()
+  return message.includes('category') && (message.includes('constraint') || message.includes('check'))
+}
+
 function normalizeCategory(category, index = 0, fallbackColor = null) {
   return {
     ...category,
@@ -225,7 +231,8 @@ export async function addTodoCategory(name, color) {
     .select('id,name,color,is_default,sort_order,created_at')
     .single()
 
-  if (insertResult.error && isMissingColumnError(insertResult.error, 'color')) {
+  const missingColorColumn = isMissingColumnError(insertResult.error, 'color')
+  if (missingColorColumn) {
     insertResult = await supabase
       .from('todo_categories')
       .insert({
@@ -241,6 +248,9 @@ export async function addTodoCategory(name, color) {
   return {
     data: insertResult.data ? normalizeCategory(insertResult.data, 0, color) : null,
     error: insertResult.error,
+    warning: missingColorColumn
+      ? 'Kategori eklendi fakat renk kolonu Supabase tarafında eksik görünüyor. `sql/todo_categories_color_migration.sql` dosyasını çalıştırmazsan seçilen renk kalıcı olmaz.'
+      : null,
   }
 }
 
@@ -323,12 +333,15 @@ export async function addTodo(text, categoryId, priority) {
   const { user, error: userError } = await getCurrentUser()
   if (userError || !user) return { data: null, error: userError || new Error('Kullanıcı oturumu bulunamadı.') }
 
+  const categoryName = categoryId ? await getCategoryNameById(user.id, categoryId) : null
+
   let insertResult = await supabase
     .from('todos')
     .insert([{
       user_id: user.id,
       text,
       category_id: categoryId || null,
+      ...(categoryName ? { category: categoryName } : {}),
       ...mapTodoFieldsToDb({ priority }),
       completed: false,
     }])
@@ -359,7 +372,6 @@ export async function addTodo(text, categoryId, priority) {
 
     if (categoryId) {
       if (missingCategoryId) {
-        const categoryName = await getCategoryNameById(user.id, categoryId)
         if (categoryName) fallbackInsert.category = categoryName
       } else {
         fallbackInsert.category_id = categoryId
@@ -370,9 +382,18 @@ export async function addTodo(text, categoryId, priority) {
       .from('todos')
       .insert([fallbackInsert])
       .select('id,user_id,text,completed,priority,category_id,category,created_at')
+
+    if (insertResult.error && categoryId && isCategoryConstraintError(insertResult.error)) {
+      return {
+        data: null,
+        error: new Error(
+          'Seçilen kategori veritabanına kaydedilemedi. Supabase şeması eski görünüyor; `sql/todo_categories_migration.sql` dosyasını çalıştırıp `todos.category_id` alanını ve kategori kısıtlarını güncelleyin.',
+        ),
+      }
+    }
   }
 
-  if (insertResult.error && isMissingColumnError(insertResult.error, 'category_id')) {
+  if (insertResult.error && isMissingColumnError(insertResult.error, 'category_id') && !categoryId) {
     insertResult = await supabase
       .from('todos')
       .insert([{
